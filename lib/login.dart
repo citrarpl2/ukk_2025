@@ -18,7 +18,11 @@ class _LoginState extends State<Login> {
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text.trim();
 
-    if (username.isEmpty) {
+    if (username.isEmpty && password.isEmpty) {
+    _showMessage("Username dan password tidak boleh kosong");
+    return;
+  }
+    else if (username.isEmpty) {
       _showMessage("Username tidak boleh kosong");
       return;
     }
@@ -28,8 +32,9 @@ class _LoginState extends State<Login> {
     }
 
     try {
+      // Query ke Supabase untuk memeriksa username dan password
       final response = await supabase
-          .from('user')
+          .from('user') // Ganti dengan nama tabel kamu di Supabase
           .select()
           .eq('username', username)
           .maybeSingle();
@@ -49,7 +54,8 @@ class _LoginState extends State<Login> {
       _showMessage("Login berhasil!");
         // Login berhasil, arahkan ke halaman Home
         Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => HomePage()),
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
     } catch (error) {
       _showMessage("Terjadi kesalahan: $error");
@@ -77,10 +83,11 @@ class _LoginState extends State<Login> {
                 radius: 60,
                 child: Icon(
                   Icons.person,
-                  color: Color.fromARGB(255, 34, 89, 172),
+                  color: const Color.fromARGB(255, 50, 119, 223),
                   size: 100,
                 ),
               ),
+              
               const SizedBox(height: 90),
               
               TextField(
@@ -96,7 +103,7 @@ class _LoginState extends State<Login> {
               const SizedBox(height: 15),
               TextField(
                 controller: _passwordController,
-                obscureText: !_isPasswordVisible,  // Mengatur visibility password
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   labelText: "Password",
                   border: OutlineInputBorder(
@@ -111,7 +118,7 @@ class _LoginState extends State<Login> {
                     ),
                     onPressed: () {
                       setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;  // Toggle password visibility
+                        _isPasswordVisible = !_isPasswordVisible; 
                       });
                     },
                   ),
@@ -121,7 +128,7 @@ class _LoginState extends State<Login> {
               ElevatedButton(
                 onPressed: _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 61, 118, 204),
+                  backgroundColor: const Color.fromARGB(255, 50, 119, 223),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -129,11 +136,11 @@ class _LoginState extends State<Login> {
                 ),
                 child: const Text(
                   "LOGIN",
-                  style: TextStyle(
-                  fontFamily: 'Poppins', // Sesuaikan dengan font favoritmu
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                    style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
