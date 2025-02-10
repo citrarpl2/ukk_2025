@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home.dart';
 
 class PelangganPage extends StatefulWidget {
   const PelangganPage({Key? key}) : super(key: key);

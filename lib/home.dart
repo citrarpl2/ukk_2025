@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login.dart';
 import 'produk.dart';
 import 'pelanggan.dart';
@@ -29,7 +28,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor:Color.fromARGB(255, 50, 119, 223),
         title: const Text(
-          'Prasmanan Bekti',
+          'Warung Makan Bekti',
           style: TextStyle(
             color: Colors.white,
             fontFamily: 'Poppins',
