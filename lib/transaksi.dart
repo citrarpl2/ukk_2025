@@ -8,6 +8,7 @@ class TransaksiPage extends StatefulWidget {
 
 class _TransaksiState extends State<TransaksiPage> {
   List<dynamic> _produkList = [];
+  List<dynamic> _pelangganList = [];
   Map<int, int> _keranjang = {}; // Menyimpan jumlah produk berdasarkan ID
   int? _pelangganId; // Bisa null awalnya, nanti diisi oleh dropdown
 
@@ -17,6 +18,7 @@ class _TransaksiState extends State<TransaksiPage> {
     super.initState();
     _fetchProduk();
     _fetchPelangganId();
+    _fetchPelangganList();
   }
 
   Future<void> _fetchPelangganId() async {
@@ -47,6 +49,21 @@ class _TransaksiState extends State<TransaksiPage> {
     }
   }
 
+  Future<void> _fetchPelangganList() async {
+  try {
+    final response = await Supabase.instance.client
+        .from('pelanggan')
+        .select();  // Ambil seluruh data pelanggan
+
+    setState(() {
+      _pelangganList = response as List<dynamic>; // Menyimpan data pelanggan
+    });
+  } catch (error) {
+    debugPrint('Error fetching pelanggan list: $error');
+  }
+}
+
+
   void _tambahKeKeranjang(int produkId) {
     setState(() {
       _keranjang[produkId] = (_keranjang[produkId] ?? 0) + 1;
@@ -73,12 +90,48 @@ class _TransaksiState extends State<TransaksiPage> {
     return total;
   }
 
-Future<void> _addTransaksi() async {
+   Widget _buildPelangganDropdown() {
+  if (_pelangganList.isEmpty) {
+    return const CircularProgressIndicator(); // Menampilkan progress indicator jika data belum tersedia
+  }
+
+  return DropdownButton<int>(
+    value: _pelangganId, // ID pelanggan yang dipilih
+    hint: Text('Pilih Pelanggan'),
+    isExpanded: true,
+    items: _pelangganList.map((pelanggan) {
+      return DropdownMenuItem<int>(
+        value: pelanggan['pelanggan_id'],
+        child: Text(pelanggan['nama_pelanggan']),
+      );
+    }).toList(),
+    onChanged: (int? newValue) {
+      setState(() {
+        _pelangganId = newValue; // Set ID pelanggan yang dipilih
+      });
+    },
+  );
+}
+
+  Future<void> _addTransaksi() async {
   if (_keranjang.isEmpty) return;
   
   try {
     final totalTransaksi = _hitungTotal();
-    final pelangganId = 1; // Gantilah dengan ID pelanggan yang benar
+    final pelangganId = _pelangganId; // Ambil ID pelanggan yang dipilih
+
+    // Cari nama pelanggan berdasarkan id yang dipilih
+    final pelanggan = _pelangganList.firstWhere(
+      (p) => p['pelanggan_id'] == pelangganId,
+      orElse: () => {} as Map<String, dynamic>, // Jika tidak ditemukan, kembalikan null
+    );
+
+    if (pelanggan.isEmpty) {
+      debugPrint("Pelanggan tidak ditemukan!");
+      return;
+    }
+
+    final namaPelanggan = pelanggan['nama_pelanggan'] ?? 'Tidak Diketahui'; // Ambil nama pelanggan
 
     // Tambahkan ini di awal sebelum loop
     List<Map<String, dynamic>> detailStruk = [];
@@ -100,7 +153,7 @@ Future<void> _addTransaksi() async {
     for (var entry in _keranjang.entries) {
       final produk = _produkList.firstWhere(
         (p) => p['produk_id'] == entry.key,
-        orElse: () => null, // Hindari error jika produk tidak ditemukan
+        orElse: () => Map<String, dynamic>.from({}), // Hindari error jika produk tidak ditemukan
       );
 
       if (produk == null) {
@@ -108,28 +161,45 @@ Future<void> _addTransaksi() async {
         continue;
       }
 
+      // **Pengecekan stok produk terlebih dahulu**
+      if (produk['stok'] >= entry.value) {
+        // Mengurangi stok produk setelah transaksi
+        await Supabase.instance.client.from('produk').update({
+          'stok': produk['stok'] - entry.value, // Kurangi stok produk sesuai jumlah yang dibeli
+        }).eq('produk_id', produk['produk_id']);
+
       await Supabase.instance.client.from('detail_penjualan').insert({
         'penjualan_id': penjualanId,
         'produk_id': produk['produk_id'],
-        'quantity': entry.value,
-        'total': produk['harga'] * entry.value,
+        'jumlah_produk': entry.value,
+        'subtotal': produk['harga'] * entry.value,
       });
 
       // Tambahkan detail ke `detailStruk`
       detailStruk.add({
         'nama_produk': produk['nama_produk'],
         'harga': produk['harga'],
-        'quantity': entry.value,
-        'total': produk['harga'] * entry.value,
+        'jumlah_produk': entry.value,
+        'subtotal': produk['harga'] * entry.value,
       });
+    } else {
+        // Menampilkan pesan jika stok tidak cukup
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stok tidak mencukupi!')),
+        );
+        debugPrint("Stok produk tidak mencukupi!");
+        return;
+      }
     }
 
     // Tampilkan struk setelah transaksi selesai
-    _tampilkanStruk(detailStruk, totalTransaksi);
+    _tampilkanStruk(detailStruk, totalTransaksi, namaPelanggan);
 
     setState(() {
       _keranjang.clear();
     });
+
+    await _fetchProduk();
 
   } catch (error) {
     debugPrint('Error adding transaksi: $error');
@@ -139,38 +209,110 @@ Future<void> _addTransaksi() async {
   }
 }
 
-
-  void _tampilkanStruk(List<Map<String, dynamic>> detailStruk, double total) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Struk Belanja'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ...detailStruk.map((item) => ListTile(
-                    title: Text(item['nama_produk']),
-                    subtitle: Text(
-                        '${item['quantity']} x Rp ${item['harga']} = Rp ${item['total']}'),
-                  )),
-              const Divider(),
-              Text(
-                'Total: Rp ${total.toStringAsFixed(2)}',
+  void _tampilkanStruk(List<Map<String, dynamic>> detailStruk, double total, String namaPelanggan) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Warung Makan Bekti',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Nama Pelanggan: $namaPelanggan',
+                style: const TextStyle(fontWeight: FontWeight.w200, fontSize: 15),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...detailStruk.map((item) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: ListTile(
+                  title: Text(item['nama_produk']),
+                  subtitle: Text(
+                      '${item['jumlah_produk']} x Rp ${item['harga']} = Rp ${item['subtotal']}'),
+                ),
+              );
+            }).toList(),
+            const Divider(),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Subtotal: Rp ${total.toStringAsFixed(2)}',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Tutup'),
             ),
           ],
-        );
-      },
-    );
-  }
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: Color.fromARGB(148, 50, 119, 223),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () {
+              Navigator.of(context).pop(); // Menutup struk
+              // Panggil konfirmasi transaksi hanya setelah menutup dialog
+              _tampilkanKonfirmasiTransaksi(); 
+            },
+            child: const Text('Bayar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void _tampilkanKonfirmasiTransaksi() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            const Text(
+              'Transaksi Berhasil!',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Terima kasih telah berbelanja di Warung Makan Bekti.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: Color.fromARGB(148, 50, 119, 223),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () {
+              Navigator.of(context).pop(); // Menutup dialog konfirmasi transaksi
+            },
+            child: const Text('Tutup'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -193,6 +335,8 @@ Future<void> _addTransaksi() async {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+             _buildPelangganDropdown(), // Dropdown untuk memilih pelanggan
+
             Expanded(
               child: ListView.builder(
                 itemCount: _produkList.length,
@@ -247,7 +391,7 @@ Future<void> _addTransaksi() async {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Total: Rp ${_hitungTotal().toStringAsFixed(2)}',
+                    'subtotal: Rp ${_hitungTotal().toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 18.0,
                       fontWeight: FontWeight.bold,

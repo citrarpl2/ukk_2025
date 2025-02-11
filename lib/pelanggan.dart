@@ -11,12 +11,15 @@ class PelangganPage extends StatefulWidget {
 class _PelangganState extends State<PelangganPage> {
   final SupabaseClient supabase = Supabase.instance.client;
   List<Map<String, dynamic>> pelanggan = [];
+  List<Map<String, dynamic>> filteredPelanggan = [];
   bool isLoading = true;
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchPelanggan();
+    _searchController.addListener(_filterPelanggan);
   }
 
   Future<void> _fetchPelanggan() async {
@@ -24,11 +27,23 @@ class _PelangganState extends State<PelangganPage> {
       final response = await supabase.from('pelanggan').select();
       setState(() {
         pelanggan = List<Map<String, dynamic>>.from(response);
+        filteredPelanggan = pelanggan;
         isLoading = false;
       });
     } catch (e) {
       _showError('Terjadi kesalahan saat mengambil data pelanggan: $e');
     }
+  }
+
+  void _filterPelanggan() {
+    String query = _searchController.text.toLowerCase();
+    setState(() {
+      filteredPelanggan = pelanggan.where((pelanggan) {
+        return pelanggan['nama_pelanggan']
+            .toLowerCase()
+            .contains(query); // Menyaring berdasarkan nama pelanggan
+      }).toList();
+    });
   }
 
   Future<void> _addPelanggan(String nama, String alamat, String nomorTelepon) async {
@@ -42,6 +57,7 @@ class _PelangganState extends State<PelangganPage> {
       if (response != null && response.isNotEmpty) {
         setState(() {
           pelanggan.add(response.first);
+          filteredPelanggan.add(response.first);
         });
       }
     } catch (e) {
@@ -62,6 +78,7 @@ class _PelangganState extends State<PelangganPage> {
           final index = pelanggan.indexWhere((item) => item['pelanggan_id'] == id);
           if (index != -1) {
             pelanggan[index] = response.first;
+            filteredPelanggan[index] = response.first;
           }
         });
       }
@@ -75,6 +92,7 @@ class _PelangganState extends State<PelangganPage> {
       await supabase.from('pelanggan').delete().eq('pelanggan_id', id);
       setState(() {
         pelanggan.removeWhere((item) => item['pelanggan_id'] == id);
+        filteredPelanggan.removeWhere((item) => item['pelanggan_id'] == id);
       });
     } catch (e) {
       _showError('Gagal menghapus pelanggan: $e');
@@ -182,7 +200,7 @@ class _PelangganState extends State<PelangganPage> {
             TextButton(
               style: TextButton.styleFrom(
                 backgroundColor: Color.fromARGB(148, 50, 119, 223),
-            foregroundColor: Colors.black,
+                foregroundColor: Colors.black,
               ),
               onPressed: () async {
                 await _deletePelanggan(id); // Hapus pelanggan jika dikonfirmasi
@@ -201,66 +219,115 @@ class _PelangganState extends State<PelangganPage> {
     return Scaffold(
       appBar: AppBar(
         title: Center(
-        child:  Text(
-          'Data Pelanggan',
-          style: TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
+          child: Text(
+            'Data Pelanggan',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
         ),
       ),
-    ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : pelanggan.isEmpty
-              ? const Center(child: Text('Tidak ada pelanggan!'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: pelanggan.length,
-                  itemBuilder: (context, index) {
-                    final item = pelanggan[index];
-                    return Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    width: double.infinity, // Menggunakan lebar penuh
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari Pelanggan...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white60,
                       ),
-                      child: ListTile(
-                        title: Text(
-                          item['nama_pelanggan'] ?? 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Alamat: ${item['alamat']}'),
-                            Text('Nomor Telepon: ${item['nomor_telepon']}'),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showAddPelangganDialog(pelangganData: item),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteConfirmationDialog(item['pelanggan_id']),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                      onChanged: (value) {
+                        setState(() {
+                          _filterPelanggan();
+                        });
+                      },
+                    ),
+                  ),
                 ),
+                filteredPelanggan.isEmpty
+                    ? const Center(child: Text('Tidak ada pelanggan!'))
+                    : Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredPelanggan.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredPelanggan[index];
+                            return Card(
+                              elevation: 4,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: ListTile(
+                                title: Text(
+                                  item['nama_pelanggan'] ?? 'Unknown',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Alamat: ${item['alamat']}'),
+                                    Text('Nomor Telepon: ${item['nomor_telepon']}'),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                      onPressed: () => _showAddPelangganDialog(pelangganData: item),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => _showDeleteConfirmationDialog(item['pelanggan_id']),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddPelangganDialog(),
         child: const Icon(Icons.add),
-        backgroundColor:const Color.fromARGB(255, 50, 119, 223),
+        backgroundColor: const Color.fromARGB(255, 50, 119, 223),
       ),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final query = _searchController.text;
+    final results = pelanggan.where((pelanggan) {
+      return pelanggan['nama_pelanggan']
+          .toLowerCase()
+          .contains(query.toLowerCase());
+    }).toList();
+
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final item = results[index];
+        return ListTile(
+          title: Text(item['nama_pelanggan'] ?? 'Unknown'),
+          subtitle: Text(item['alamat'] ?? 'Alamat tidak tersedia'),
+        );
+      },
     );
   }
 }

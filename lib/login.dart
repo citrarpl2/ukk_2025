@@ -138,7 +138,7 @@ class _LoginState extends State<Login> {
                   "LOGIN",
                     style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 15,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
