@@ -216,61 +216,128 @@ class _TransaksiState extends State<TransaksiPage> {
       return AlertDialog(
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header dengan Nama Warung
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               child: Text(
                 'Warung Makan Bekti',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: Colors.black,
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
+            const SizedBox(height: 8),
+
+            // Garis Pemisah
+            const Divider(),
+
+            // Nama Pelanggan
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Text(
                 'Nama Pelanggan: $namaPelanggan',
-                style: const TextStyle(fontWeight: FontWeight.w200, fontSize: 15),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...detailStruk.map((item) {
-              return Align(
-                alignment: Alignment.centerLeft,
-                child: ListTile(
-                  title: Text(item['nama_produk']),
-                  subtitle: Text(
-                      '${item['jumlah_produk']} x Rp ${item['harga']} = Rp ${item['subtotal']}'),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-              );
-            }).toList(),
-            const Divider(),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Subtotal: Rp ${total.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
+            
+
+            // Detail Produk yang Dibeli
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Column(
+                children: detailStruk.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item['nama_produk'],
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          '${item['jumlah_produk']} x Rp ${item['harga']} = Rp ${item['subtotal']}',
+                          style: const TextStyle(fontWeight: FontWeight.normal),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            
+
+            // Subtotal
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Subtotal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    'Rp ${total.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+
+            // Tombol Bayar
+            Padding(
+  padding: const EdgeInsets.only(top: 8.0),
+  child: Align(
+    alignment: Alignment.centerRight, // Menempatkan tombol di sebelah kanan
+    child: ElevatedButton(
+      onPressed: () {
+        Navigator.of(context).pop(); // Menutup struk
+        _tampilkanKonfirmasiTransaksi();
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color.fromARGB(148, 50, 119, 223), // Warna tombol biru
+        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 15.0), // Padding lebih besar
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0), // Sudut lebih membulat
+        ),
+      ),
+      child: Text(
+        'Bayar',
+        style: TextStyle(
+          fontSize: 20, // Ukuran font lebih besar
+          fontWeight: FontWeight.bold,
+          color: Colors.black, // Warna teks hitam
+          letterSpacing: 1.2, // Spasi antar huruf lebih lebar
+        ),
+      ),
+    ),
+  ),
+),
+
           ],
         ),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: Color.fromARGB(148, 50, 119, 223),
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop(); // Menutup struk
-              // Panggil konfirmasi transaksi hanya setelah menutup dialog
-              _tampilkanKonfirmasiTransaksi(); 
-            },
-            child: const Text('Bayar'),
-          ),
-        ],
       );
     },
   );
 }
+
 
 void _tampilkanKonfirmasiTransaksi() {
   showDialog(

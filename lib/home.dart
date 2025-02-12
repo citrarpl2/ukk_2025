@@ -27,15 +27,27 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor:Color.fromARGB(255, 50, 119, 223),
-        title: const Text(
-          'Warung Makan Bekti',
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: 'Poppins',
-            fontSize: 23,
-            fontWeight: FontWeight.bold,
+        title: Row(
+        children: [
+          // Menambahkan logo di sebelah kiri teks
+          Image.asset(
+            'assets/images/logo2.png', // Ganti dengan path gambar logo Anda
+            width: 50, // Atur ukuran gambar
+            height: 50, // Atur ukuran gambar
+            fit: BoxFit.cover,
           ),
-        ),
+          SizedBox(width: 10), // Jarak antara logo dan teks
+          const Text(
+            'Warung Bekti',
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Poppins',
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout,

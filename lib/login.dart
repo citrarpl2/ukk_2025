@@ -78,17 +78,14 @@ class _LoginState extends State<Login> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.black,
-                radius: 60,
-                child: Icon(
-                  Icons.person,
-                  color: const Color.fromARGB(255, 50, 119, 223),
-                  size: 100,
-                ),
-              ),
+              Image.asset(
+            'assets/images/logo2.png', // Ganti dengan path gambar logo Anda
+            width: 350, // Atur ukuran gambar
+            height: 350, // Atur ukuran gambar
+            fit: BoxFit.cover,
+          ),
               
-              const SizedBox(height: 90),
+              const SizedBox(height: 20),
               
               TextField(
                 controller: _usernameController,
